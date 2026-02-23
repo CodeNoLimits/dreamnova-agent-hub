@@ -811,6 +811,131 @@ crontab -l | grep dreamnova</pre>
   </div>
 </div>
 
+<!-- BIDIRECTIONAL COMMUNICATION -->
+<div class="section" id="comms">
+  <div class="section-title">
+    <h2>Communication Bidirectionnelle — Tous → Claude</h2>
+    <p>Claude contrôle tous les agents. Chaque agent peut aussi parler à Claude.</p>
+  </div>
+
+  <!-- Flow diagram -->
+  <div style="display:grid;grid-template-columns:1fr auto 1fr;gap:1rem;align-items:center;max-width:900px;margin:0 auto 2.5rem;">
+    <!-- Claude → Agents -->
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1.5rem;">
+      <h4 style="color:var(--claude);margin-bottom:1rem;">🤖 Claude → Agents</h4>
+      <ul style="font-size:.85rem;color:var(--text-dim);list-style:none;display:flex;flex-direction:column;gap:.5rem;">
+        <li>→ <code>dispatch.sh auto "tâche"</code></li>
+        <li>→ <code>zeroclaw agent -m "..."</code></li>
+        <li>→ <code>openclaw agent -m "..."</code></li>
+        <li>→ <code>curl :50001/api_message</code></li>
+        <li>→ Write to <code>SESSION_LIVE.md</code></li>
+      </ul>
+    </div>
+    <!-- Arrow -->
+    <div style="text-align:center;font-size:1.5rem;color:var(--gold);">⇄</div>
+    <!-- Agents → Claude -->
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1.5rem;">
+      <h4 style="color:var(--gold);margin-bottom:1rem;">🔄 Agents → Claude</h4>
+      <ul style="font-size:.85rem;color:var(--text-dim);list-style:none;display:flex;flex-direction:column;gap:.5rem;">
+        <li>→ Write to <code>AGENT_BRIDGE.md</code></li>
+        <li>→ Telegram @nerostats (David)</li>
+        <li>→ <code>SESSION_LIVE.md</code> append</li>
+        <li>→ <code>HANDOVER_*.md</code> at session end</li>
+        <li>→ Claude reads all files at session start</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- Inter-agent matrix -->
+  <div class="section-title" style="margin-top:2rem;margin-bottom:1.5rem;">
+    <h3 style="font-size:1.2rem;">Matrix de Communication Inter-Agents</h3>
+  </div>
+  <table>
+    <thead>
+      <tr><th>De \ Vers</th><th>🤖 Claude Code</th><th>🦞 OpenClaw</th><th>🦀 ZeroClaw</th><th>🧠 Agent Zero</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>🤖 Claude Code</strong></td>
+        <td>—</td>
+        <td><code>openclaw agent -m</code></td>
+        <td><code>zeroclaw agent -m</code><br><small>ou WebSocket :42617</small></td>
+        <td><code>POST :50001/api_message</code></td>
+      </tr>
+      <tr>
+        <td><strong>🦞 OpenClaw</strong></td>
+        <td>Écrit AGENT_BRIDGE.md<br>→ Claude lit au démarrage</td>
+        <td>Interne (crons)</td>
+        <td><code>curl :42617/webhook</code></td>
+        <td><code>curl :50001/api_message</code></td>
+      </tr>
+      <tr>
+        <td><strong>🦀 ZeroClaw</strong></td>
+        <td>Écrit AGENT_BRIDGE.md<br>→ Telegram → David</td>
+        <td><code>curl :18789</code></td>
+        <td>Interne (Telegram)</td>
+        <td><code>curl :50001/api_message</code></td>
+      </tr>
+      <tr>
+        <td><strong>🧠 Agent Zero</strong></td>
+        <td>Écrit knowledge/custom/<br>DREAMNOVA_CONTEXT.md</td>
+        <td><code>curl :18789</code></td>
+        <td><code>curl :42617/webhook</code></td>
+        <td>Interne (tools)</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <!-- AGENT_BRIDGE.md explanation -->
+  <div class="script-block" style="margin-top:2rem;">
+    <span class="script-label">AGENT_BRIDGE.md — Format standard de communication</span>
+    <pre>## [2026-02-24 00:00] ZeroClaw → Claude
+**Status**: Task completed
+**Result**: Top 5 RAM processes analyzed — System (17.6GB), Chrome (2.7GB)
+**Next**: Claude should review optimization recommendations
+**File**: /tmp/zeroclaw-analysis-20260224.txt
+
+## [2026-02-24 00:05] Agent Zero → Claude
+**Status**: Research done
+**Result**: Found 3 relevant papers on DNA architecture
+**Next**: Integrate findings into Nachman Science paper
+**URL**: nachman-science.vercel.app/research</pre>
+  </div>
+
+  <!-- ZeroClaw Chat access -->
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:1rem;margin-top:2rem;">
+    <div class="wf-card">
+      <h3>💬 ZeroClaw Chat Web</h3>
+      <p style="font-size:.85rem;color:var(--text-dim);margin-bottom:.75rem;">Interface WebSocket temps réel</p>
+      <ul>
+        <li><code>http://127.0.0.1:8181</code></li>
+        <li>Streaming agent responses</li>
+        <li>Modèle: <strong>llama3.1:8b</strong></li>
+        <li>Backup chat: <code>:8181</code> (Ollama direct)</li>
+      </ul>
+    </div>
+    <div class="wf-card">
+      <h3>📱 ZeroClaw Telegram</h3>
+      <p style="font-size:.85rem;color:var(--text-dim);margin-bottom:.75rem;">Agent depuis ton téléphone</p>
+      <ul>
+        <li>Bot: <strong>@dreamnova_zc_bot</strong></li>
+        <li>Autorisé: @nerostats (David)</li>
+        <li>Même modèle llama3.1:8b</li>
+        <li>Tâches async + mémoire SQLite</li>
+      </ul>
+    </div>
+    <div class="wf-card">
+      <h3>🔧 ZeroClaw Natif :42617</h3>
+      <p style="font-size:.85rem;color:var(--text-dim);margin-bottom:.75rem;">Dashboard officiel streaming</p>
+      <ul>
+        <li>WebSocket: <code>/ws/chat?token=dreamnova-zc-2026</code></li>
+        <li>Webhook: <code>POST /webhook</code></li>
+        <li>Pairing: F12 → <code>localStorage.setItem('zeroclaw_token','dreamnova-zc-2026')</code></li>
+      </ul>
+    </div>
+  </div>
+</div>
+
 <footer>
   <p>⚡ DreamNova 4-Point Architecture — David Amor · Jerusalem · <span>Na Nach Nachma Nachman MeUman</span></p>
   <p style="margin-top:0.5rem;font-size:0.7rem;">Auto-healing · Permanent memory · Daily evolution · claude-sonnet-4-6</p>
