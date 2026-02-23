@@ -1,0 +1,727 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>DreamNova — 4-Point Agent Architecture</title>
+<style>
+  :root {
+    --gold: #D4AF37;
+    --gold-dim: #a8862a;
+    --black: #050508;
+    --surface: #0d0d14;
+    --surface2: #13131e;
+    --border: #1e1e2e;
+    --text: #e2e2f0;
+    --text-dim: #8888aa;
+    --claude: #cc785c;
+    --openclaw: #4f8ef7;
+    --zeroclaw: #22c55e;
+    --agentzero: #a855f7;
+    --font: 'Inter', system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--black); color: var(--text); font-family: var(--font); min-height: 100vh; overflow-x: hidden; }
+
+  /* NAV */
+  nav { display: flex; align-items: center; justify-content: space-between; padding: 1rem 2rem; border-bottom: 1px solid var(--border); position: sticky; top: 0; background: rgba(5,5,8,0.92); backdrop-filter: blur(12px); z-index: 100; }
+  .logo { font-size: 1.1rem; font-weight: 700; color: var(--gold); letter-spacing: 0.05em; }
+  .nav-links { display: flex; gap: 1.5rem; font-size: 0.85rem; color: var(--text-dim); }
+  .nav-links a { color: inherit; text-decoration: none; transition: color 0.2s; }
+  .nav-links a:hover { color: var(--gold); }
+
+  /* HERO */
+  .hero { text-align: center; padding: 5rem 2rem 3rem; position: relative; }
+  .hero::before { content: ''; position: absolute; inset: 0; background: radial-gradient(ellipse at 50% 0%, rgba(212,175,55,0.08) 0%, transparent 70%); pointer-events: none; }
+  .badge { display: inline-block; border: 1px solid var(--gold-dim); color: var(--gold); font-size: 0.75rem; padding: 0.25rem 0.75rem; border-radius: 999px; margin-bottom: 1.5rem; letter-spacing: 0.1em; text-transform: uppercase; }
+  .hero h1 { font-size: clamp(2rem, 5vw, 3.5rem); font-weight: 800; line-height: 1.1; margin-bottom: 1rem; }
+  .hero h1 span { color: var(--gold); }
+  .hero p { color: var(--text-dim); font-size: 1.1rem; max-width: 600px; margin: 0 auto 2.5rem; line-height: 1.6; }
+  .status-bar { display: flex; justify-content: center; gap: 2rem; flex-wrap: wrap; font-size: 0.8rem; }
+  .status-item { display: flex; align-items: center; gap: 0.4rem; }
+  .dot { width: 7px; height: 7px; border-radius: 50%; animation: pulse 2s infinite; }
+  .dot-gold { background: var(--gold); box-shadow: 0 0 6px var(--gold); }
+  .dot-blue { background: var(--openclaw); box-shadow: 0 0 6px var(--openclaw); animation-delay: 0.3s; }
+  .dot-green { background: var(--zeroclaw); box-shadow: 0 0 6px var(--zeroclaw); animation-delay: 0.6s; }
+  .dot-purple { background: var(--agentzero); box-shadow: 0 0 6px var(--agentzero); animation-delay: 0.9s; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+  /* ARCHITECTURE DIAGRAM */
+  .section { padding: 4rem 2rem; max-width: 1100px; margin: 0 auto; }
+  .section-title { text-align: center; margin-bottom: 3rem; }
+  .section-title h2 { font-size: 1.8rem; font-weight: 700; margin-bottom: 0.5rem; }
+  .section-title p { color: var(--text-dim); }
+
+  .arch-container { position: relative; width: 100%; max-width: 700px; margin: 0 auto; aspect-ratio: 1; }
+  .arch-svg { width: 100%; height: 100%; }
+
+  /* NODES */
+  .node { position: absolute; width: 140px; text-align: center; }
+  .node-center { top: 50%; left: 50%; transform: translate(-50%,-50%); width: 160px; }
+  .node-top { top: 0; left: 50%; transform: translateX(-50%); }
+  .node-right { top: 50%; right: 0; transform: translateY(-50%); }
+  .node-bottom { bottom: 0; left: 50%; transform: translateX(-50%); }
+  .node-left { top: 50%; left: 0; transform: translateY(-50%); }
+
+  .node-card { border-radius: 16px; padding: 1.2rem 1rem; border: 1px solid; transition: transform 0.2s, box-shadow 0.2s; cursor: default; }
+  .node-card:hover { transform: translateY(-3px); }
+  .node-claude { background: rgba(204,120,92,0.1); border-color: var(--claude); box-shadow: 0 0 30px rgba(204,120,92,0.15); }
+  .node-openclaw { background: rgba(79,142,247,0.1); border-color: var(--openclaw); box-shadow: 0 0 20px rgba(79,142,247,0.1); }
+  .node-zeroclaw { background: rgba(34,197,94,0.1); border-color: var(--zeroclaw); box-shadow: 0 0 20px rgba(34,197,94,0.1); }
+  .node-agentzero { background: rgba(168,85,247,0.1); border-color: var(--agentzero); box-shadow: 0 0 20px rgba(168,85,247,0.1); }
+
+  .node-icon { font-size: 2rem; margin-bottom: 0.4rem; }
+  .node-name { font-size: 0.85rem; font-weight: 700; }
+  .node-sub { font-size: 0.7rem; color: var(--text-dim); margin-top: 0.2rem; }
+  .node-port { font-size: 0.65rem; font-family: monospace; margin-top: 0.3rem; opacity: 0.6; }
+
+  /* ARCH DIAGRAM LAYOUT */
+  .arch-wrap { display: grid; grid-template-columns: 1fr 1fr 1fr; grid-template-rows: 1fr 1fr 1fr; gap: 1rem; max-width: 700px; margin: 0 auto; position: relative; padding: 1rem; }
+  .arch-lines { position: absolute; inset: 0; pointer-events: none; }
+  .n-tl { grid-column:1; grid-row:1; }
+  .n-tr { grid-column:3; grid-row:1; }
+  .n-center { grid-column:2; grid-row:2; }
+  .n-bl { grid-column:1; grid-row:3; }
+  .n-br { grid-column:3; grid-row:3; }
+
+  /* CONNECTIONS */
+  .conn-label { font-size: 0.65rem; color: var(--text-dim); text-align: center; font-family: monospace; }
+
+  /* 4-POINT VISUAL — DIAMOND */
+  .diamond-wrap { display: flex; justify-content: center; margin: 2rem 0; }
+  .diamond { position: relative; width: 560px; height: 560px; }
+  .d-node { position: absolute; }
+  .d-center { top: 50%; left: 50%; transform: translate(-50%,-50%); }
+  .d-top    { top: 20px; left: 50%; transform: translateX(-50%); }
+  .d-right  { top: 50%; right: 20px; transform: translateY(-50%); }
+  .d-bottom { bottom: 20px; left: 50%; transform: translateX(-50%); }
+  .d-left   { top: 50%; left: 20px; transform: translateY(-50%); }
+
+  /* WORKFLOW CARDS */
+  .workflow-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem; margin-top: 2rem; }
+  .wf-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; }
+  .wf-card h3 { font-size: 1rem; font-weight: 700; margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.5rem; }
+  .wf-card ol, .wf-card ul { padding-left: 1.2rem; color: var(--text-dim); font-size: 0.85rem; line-height: 1.8; }
+  .wf-card code { background: var(--surface2); padding: 0.1rem 0.4rem; border-radius: 4px; font-size: 0.75rem; font-family: monospace; color: var(--gold); }
+
+  /* COMMS TABLE */
+  table { width: 100%; border-collapse: collapse; font-size: 0.85rem; margin-top: 1.5rem; }
+  th { background: var(--surface2); color: var(--gold); font-weight: 600; padding: 0.75rem 1rem; text-align: left; border: 1px solid var(--border); }
+  td { padding: 0.65rem 1rem; border: 1px solid var(--border); color: var(--text-dim); vertical-align: top; }
+  td code { color: var(--text); font-family: monospace; font-size: 0.78rem; background: var(--surface2); padding: 0.1rem 0.3rem; border-radius: 3px; }
+  tr:hover td { background: rgba(255,255,255,0.02); }
+
+  /* SCRIPTS */
+  .script-block { background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; padding: 1.5rem; margin: 1rem 0; position: relative; }
+  .script-block pre { font-family: monospace; font-size: 0.78rem; line-height: 1.7; color: #a8d8a8; overflow-x: auto; white-space: pre; }
+  .script-label { position: absolute; top: 0.75rem; right: 1rem; font-size: 0.7rem; color: var(--text-dim); letter-spacing: 0.05em; text-transform: uppercase; }
+  .copy-btn { position: absolute; top: 0.6rem; right: 5rem; background: var(--border); border: none; color: var(--text-dim); padding: 0.2rem 0.6rem; border-radius: 4px; font-size: 0.7rem; cursor: pointer; transition: background 0.2s; }
+  .copy-btn:hover { background: var(--gold); color: #000; }
+
+  /* DAILY SCANNER */
+  .scanner-card { background: linear-gradient(135deg, rgba(212,175,55,0.05) 0%, rgba(34,197,94,0.05) 100%); border: 1px solid var(--border); border-radius: 16px; padding: 2rem; margin: 2rem 0; }
+  .scanner-card h3 { font-size: 1.2rem; margin-bottom: 1rem; color: var(--gold); }
+  .scan-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-top: 1rem; }
+  .scan-item { background: var(--surface2); border-radius: 8px; padding: 1rem; font-size: 0.8rem; }
+  .scan-item h4 { color: var(--text); margin-bottom: 0.4rem; font-size: 0.85rem; }
+  .scan-item p { color: var(--text-dim); line-height: 1.5; }
+
+  /* MEMORY SYSTEM */
+  .memory-timeline { display: flex; flex-direction: column; gap: 0; margin-top: 1.5rem; }
+  .mem-event { display: flex; gap: 1rem; padding: 0.75rem 0; border-bottom: 1px solid var(--border); }
+  .mem-event:last-child { border: none; }
+  .mem-time { font-size: 0.75rem; color: var(--gold); font-family: monospace; min-width: 80px; }
+  .mem-text { font-size: 0.82rem; color: var(--text-dim); }
+  .mem-text strong { color: var(--text); }
+
+  /* SELF-HEAL */
+  .heal-steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-top: 1.5rem; }
+  .heal-step { background: var(--surface2); border-radius: 10px; padding: 1rem; text-align: center; border: 1px solid var(--border); }
+  .heal-step .step-num { font-size: 1.5rem; font-weight: 800; color: var(--gold); margin-bottom: 0.4rem; }
+  .heal-step h4 { font-size: 0.85rem; margin-bottom: 0.3rem; }
+  .heal-step p { font-size: 0.75rem; color: var(--text-dim); }
+
+  /* AGENT SPEC CARDS */
+  .agent-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1.5rem; margin-top: 2rem; }
+  .agent-card { background: var(--surface); border-radius: 12px; padding: 1.5rem; border-top: 3px solid; }
+  .agent-card.cc { border-color: var(--claude); }
+  .agent-card.oc { border-color: var(--openclaw); }
+  .agent-card.zc { border-color: var(--zeroclaw); }
+  .agent-card.az { border-color: var(--agentzero); }
+  .agent-card h3 { font-size: 1rem; font-weight: 700; margin-bottom: 0.3rem; }
+  .agent-card .port-badge { font-size: 0.7rem; font-family: monospace; padding: 0.2rem 0.5rem; border-radius: 4px; background: var(--surface2); }
+  .agent-card ul { margin-top: 0.75rem; padding-left: 1.1rem; font-size: 0.8rem; color: var(--text-dim); line-height: 1.8; }
+
+  /* FOOTER */
+  footer { border-top: 1px solid var(--border); text-align: center; padding: 2rem; color: var(--text-dim); font-size: 0.8rem; margin-top: 4rem; }
+  footer span { color: var(--gold); }
+
+  /* RESPONSIVE */
+  @media (max-width: 600px) { .nav-links { display: none; } .hero { padding: 3rem 1rem 2rem; } }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="logo">⚡ DreamNova Agent Hub</div>
+  <div class="nav-links">
+    <a href="#architecture">Architecture</a>
+    <a href="#workflow">Workflow</a>
+    <a href="#comms">Comms</a>
+    <a href="#autohealing">Auto-Healing</a>
+    <a href="#scanner">Daily Scanner</a>
+    <a href="#memory">Memory</a>
+  </div>
+</nav>
+
+<div class="hero">
+  <div class="badge">v1.0 — Live System — David Amor · Jerusalem</div>
+  <h1>4-Point <span>Agent Architecture</span></h1>
+  <p>Claude Code as global center, coordinating OpenClaw, ZeroClaw and Agent Zero in a self-healing, memory-driven, autonomously evolving workflow.</p>
+  <div class="status-bar">
+    <div class="status-item"><div class="dot dot-gold"></div> Claude Code — CENTER</div>
+    <div class="status-item"><div class="dot dot-blue"></div> OpenClaw :18789</div>
+    <div class="status-item"><div class="dot dot-green"></div> ZeroClaw :42617</div>
+    <div class="status-item"><div class="dot dot-purple"></div> Agent Zero :50001</div>
+  </div>
+</div>
+
+<!-- ARCHITECTURE -->
+<div class="section" id="architecture">
+  <div class="section-title">
+    <h2>The Diamond Architecture</h2>
+    <p>Every agent talks to Claude Code. No agent talks directly to another without passing through the center.</p>
+  </div>
+
+  <!-- SVG DIAMOND DIAGRAM -->
+  <div style="display:flex;justify-content:center;margin:2rem 0;">
+    <svg viewBox="0 0 600 600" width="100%" style="max-width:580px;" xmlns="http://www.w3.org/2000/svg">
+      <!-- Connection lines -->
+      <line x1="300" y1="300" x2="300" y2="100" stroke="#cc785c" stroke-width="2" stroke-dasharray="6,4" opacity="0.7"/>
+      <line x1="300" y1="300" x2="500" y2="300" stroke="#4f8ef7" stroke-width="2" stroke-dasharray="6,4" opacity="0.7"/>
+      <line x1="300" y1="300" x2="300" y2="500" stroke="#22c55e" stroke-width="2" stroke-dasharray="6,4" opacity="0.7"/>
+      <line x1="300" y1="300" x2="100" y2="300" stroke="#a855f7" stroke-width="2" stroke-dasharray="6,4" opacity="0.7"/>
+      <!-- Diamond border -->
+      <polygon points="300,60 540,300 300,540 60,300" fill="none" stroke="#1e1e2e" stroke-width="1.5"/>
+      <!-- Glow center -->
+      <circle cx="300" cy="300" r="60" fill="rgba(212,175,55,0.06)" stroke="#D4AF37" stroke-width="1.5"/>
+
+      <!-- CLAUDE CODE — CENTER -->
+      <g>
+        <rect x="230" y="265" width="140" height="70" rx="12" fill="rgba(204,120,92,0.15)" stroke="#cc785c" stroke-width="1.5"/>
+        <text x="300" y="291" text-anchor="middle" fill="#cc785c" font-size="18">🤖</text>
+        <text x="300" y="311" text-anchor="middle" fill="#e2e2f0" font-size="11" font-weight="700">Claude Code</text>
+        <text x="300" y="326" text-anchor="middle" fill="#8888aa" font-size="9">CEO · Global Center</text>
+      </g>
+
+      <!-- OPENCLAW — RIGHT -->
+      <g>
+        <rect x="425" y="265" width="145" height="70" rx="12" fill="rgba(79,142,247,0.12)" stroke="#4f8ef7" stroke-width="1.5"/>
+        <text x="497" y="291" text-anchor="middle" fill="#4f8ef7" font-size="18">🦞</text>
+        <text x="497" y="311" text-anchor="middle" fill="#e2e2f0" font-size="11" font-weight="700">OpenClaw</text>
+        <text x="497" y="326" text-anchor="middle" fill="#8888aa" font-size="9">:18789 · Ops / Cron</text>
+        <!-- Arrow label -->
+        <text x="390" y="295" text-anchor="middle" fill="#4f8ef7" font-size="8" opacity="0.8">HTTP</text>
+        <text x="390" y="308" text-anchor="middle" fill="#4f8ef7" font-size="8" opacity="0.8">CLI</text>
+      </g>
+
+      <!-- ZEROCLAW — TOP -->
+      <g>
+        <rect x="225" y="42" width="150" height="70" rx="12" fill="rgba(34,197,94,0.12)" stroke="#22c55e" stroke-width="1.5"/>
+        <text x="300" y="68" text-anchor="middle" fill="#22c55e" font-size="18">🦀</text>
+        <text x="300" y="88" text-anchor="middle" fill="#e2e2f0" font-size="11" font-weight="700">ZeroClaw</text>
+        <text x="300" y="103" text-anchor="middle" fill="#8888aa" font-size="9">:42617 · Telegram Bot</text>
+        <!-- Arrow label -->
+        <text x="265" y="200" text-anchor="middle" fill="#22c55e" font-size="8" opacity="0.8">webhook</text>
+        <text x="332" y="200" text-anchor="middle" fill="#22c55e" font-size="8" opacity="0.8">CLI</text>
+      </g>
+
+      <!-- AGENT ZERO — BOTTOM -->
+      <g>
+        <rect x="218" y="490" width="164" height="70" rx="12" fill="rgba(168,85,247,0.12)" stroke="#a855f7" stroke-width="1.5"/>
+        <text x="300" y="516" text-anchor="middle" fill="#a855f7" font-size="18">🧠</text>
+        <text x="300" y="536" text-anchor="middle" fill="#e2e2f0" font-size="11" font-weight="700">Agent Zero</text>
+        <text x="300" y="551" text-anchor="middle" fill="#8888aa" font-size="9">:50001 · Deep Research</text>
+        <text x="265" y="435" text-anchor="middle" fill="#a855f7" font-size="8" opacity="0.8">curl</text>
+        <text x="335" y="435" text-anchor="middle" fill="#a855f7" font-size="8" opacity="0.8">API</text>
+      </g>
+
+      <!-- AGENT ZERO — LEFT -->
+      <g>
+        <rect x="10" y="265" width="145" height="70" rx="12" fill="rgba(168,85,247,0.12)" stroke="#a855f7" stroke-width="1.5"/>
+        <text x="82" y="291" text-anchor="middle" fill="#a855f7" font-size="18">🧠</text>
+        <text x="82" y="311" text-anchor="middle" fill="#e2e2f0" font-size="11" font-weight="700">Agent Zero</text>
+        <text x="82" y="326" text-anchor="middle" fill="#8888aa" font-size="9">:50001 · Web Search</text>
+        <text x="183" y="295" text-anchor="middle" fill="#a855f7" font-size="8" opacity="0.8">curl</text>
+        <text x="183" y="308" text-anchor="middle" fill="#a855f7" font-size="8" opacity="0.8">JSON</text>
+      </g>
+    </svg>
+  </div>
+
+  <!-- AGENT SPECS -->
+  <div class="agent-grid">
+    <div class="agent-card cc">
+      <h3>🤖 Claude Code <span class="port-badge">CENTER</span></h3>
+      <ul>
+        <li>Global orchestrator + CEO brain</li>
+        <li>Reads all files before acting</li>
+        <li>Dispatches tasks to right agent</li>
+        <li>Updates SESSION_LIVE.md + AGENT_BRIDGE.md</li>
+        <li>Writes code, deploys, commits</li>
+        <li>Model: claude-sonnet-4-6</li>
+      </ul>
+    </div>
+    <div class="agent-card oc">
+      <h3>🦞 OpenClaw <span class="port-badge">:18789</span></h3>
+      <ul>
+        <li>8 active agents (clients + DreamNova)</li>
+        <li>19 cron jobs, scheduler</li>
+        <li>Telegram + WhatsApp channels</li>
+        <li>Client automations (Keren, Baroukh…)</li>
+        <li>Model: claude-sonnet-4-5 (antigravity)</li>
+        <li>Memory: ~/clawd/ (39+ files)</li>
+      </ul>
+    </div>
+    <div class="agent-card zc">
+      <h3>🦀 ZeroClaw <span class="port-badge">:42617</span></h3>
+      <ul>
+        <li>Lightweight Rust agent (10.7MB)</li>
+        <li>@dreamnova_zc_bot — Telegram direct</li>
+        <li>Quick queries, background tasks</li>
+        <li>Model: qwen3-coder (Ollama local)</li>
+        <li>Fallback: OpenRouter free tier</li>
+        <li>launchd auto-start</li>
+      </ul>
+    </div>
+    <div class="agent-card az">
+      <h3>🧠 Agent Zero <span class="port-badge">:50001</span></h3>
+      <ul>
+        <li>Deep autonomous research</li>
+        <li>Multi-step complex tasks</li>
+        <li>Web search + file analysis</li>
+        <li>Model: gemini-3.1-pro via Google AI</li>
+        <li>Docker container isolated</li>
+        <li>API key: ND-YcAFpPSJejhz-</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- COMMUNICATION MAP -->
+<div class="section" id="comms" style="background:var(--surface);padding:4rem 2rem;max-width:100%;">
+  <div style="max-width:1100px;margin:0 auto;">
+  <div class="section-title">
+    <h2>Communication Matrix</h2>
+    <p>How Claude Code talks to each agent — exact commands</p>
+  </div>
+  <table>
+    <thead>
+      <tr><th>From → To</th><th>Protocol</th><th>Command / Endpoint</th><th>Use When</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Claude Code → <strong style="color:var(--openclaw)">OpenClaw</strong></td>
+        <td>CLI / HTTP</td>
+        <td><code>openclaw agent -m "task"</code><br><code>curl :18789/api/v1/tasks</code></td>
+        <td>Client work, cron, Telegram notif</td>
+      </tr>
+      <tr>
+        <td>Claude Code → <strong style="color:var(--zeroclaw)">ZeroClaw</strong></td>
+        <td>CLI / Webhook</td>
+        <td><code>zeroclaw agent -m "task"</code><br><code>curl :42617/webhook</code></td>
+        <td>Quick queries, background reads</td>
+      </tr>
+      <tr>
+        <td>Claude Code → <strong style="color:var(--agentzero)">Agent Zero</strong></td>
+        <td>REST JSON</td>
+        <td><code>curl :50001/api_message -d '{"message":"..."}'</code></td>
+        <td>Deep research, web search, audits</td>
+      </tr>
+      <tr>
+        <td><strong style="color:var(--openclaw)">OpenClaw</strong> → Claude Code</td>
+        <td>File system</td>
+        <td>writes to <code>AGENT_BRIDGE.md</code></td>
+        <td>Status updates, task completion</td>
+      </tr>
+      <tr>
+        <td><strong style="color:var(--zeroclaw)">ZeroClaw</strong> → Claude Code</td>
+        <td>File system</td>
+        <td>writes to <code>AGENT_BRIDGE.md</code></td>
+        <td>Results, errors, notifications</td>
+      </tr>
+      <tr>
+        <td><strong style="color:var(--agentzero)">Agent Zero</strong> → Claude Code</td>
+        <td>File + REST</td>
+        <td><code>GET :50001/api_message/{id}</code></td>
+        <td>Research results, long tasks</td>
+      </tr>
+    </tbody>
+  </table>
+  </div>
+</div>
+
+<!-- OPTIMAL WORKFLOW -->
+<div class="section" id="workflow">
+  <div class="section-title">
+    <h2>Optimal Workflow Routing</h2>
+    <p>Claude Code decides which agent to use based on task type</p>
+  </div>
+  <div class="workflow-grid">
+    <div class="wf-card">
+      <h3>🚀 <span style="color:var(--claude)">New Feature / Deploy</span></h3>
+      <ol>
+        <li>Claude Code reads files + plans</li>
+        <li>Writes + tests code locally</li>
+        <li>OpenClaw notifies client via Telegram</li>
+        <li><code>vercel --prod</code> deploy</li>
+        <li>ZeroClaw sends David confirmation</li>
+      </ol>
+    </div>
+    <div class="wf-card">
+      <h3>🔍 <span style="color:var(--agentzero)">Research Task</span></h3>
+      <ol>
+        <li>Claude Code identifies research need</li>
+        <li>Dispatches to Agent Zero via curl</li>
+        <li>Agent Zero: web search + analysis</li>
+        <li>Result saved to <code>AGENT_BRIDGE.md</code></li>
+        <li>Claude Code reads + acts on result</li>
+      </ol>
+    </div>
+    <div class="wf-card">
+      <h3>📱 <span style="color:var(--openclaw)">Client Automation</span></h3>
+      <ol>
+        <li>OpenClaw cron triggers (every 15min)</li>
+        <li>Monitors client sites health</li>
+        <li>WhatsApp alert if site down</li>
+        <li>Claude Code notified via Bridge</li>
+        <li>Auto-fix or escalate to David</li>
+      </ol>
+    </div>
+    <div class="wf-card">
+      <h3>⚡ <span style="color:var(--zeroclaw)">Quick Background Task</span></h3>
+      <ol>
+        <li>David sends msg to @dreamnova_zc_bot</li>
+        <li>ZeroClaw processes (qwen3-coder)</li>
+        <li>Writes result to workspace file</li>
+        <li>Claude Code reads on next session</li>
+        <li>Integrated into main workflow</li>
+      </ol>
+    </div>
+    <div class="wf-card">
+      <h3>🌙 <span style="color:var(--gold)">Night Shift (Autonomous)</span></h3>
+      <ol>
+        <li>OpenClaw runs 8 agents in background</li>
+        <li>ZeroClaw processes Telegram messages</li>
+        <li>Agent Zero deep-researches tech</li>
+        <li>All write to <code>SESSION_LIVE.md</code></li>
+        <li>Claude Code picks up at morning</li>
+      </ol>
+    </div>
+    <div class="wf-card">
+      <h3>💰 <span style="color:var(--gold)">Revenue Task (Priority)</span></h3>
+      <ol>
+        <li>Cash-First Filter: revenue &lt;7 days?</li>
+        <li>YES → Claude Code: production code</li>
+        <li>OpenClaw: send invoice / Stripe link</li>
+        <li>ZeroClaw: notify David on Telegram</li>
+        <li>Agent Zero: track competitor pricing</li>
+      </ol>
+    </div>
+  </div>
+</div>
+
+<!-- AUTO-HEALING -->
+<div class="section" id="autohealing" style="background:var(--surface);padding:4rem 2rem;max-width:100%;">
+  <div style="max-width:1100px;margin:0 auto;">
+  <div class="section-title">
+    <h2>Auto-Healing System</h2>
+    <p>Every agent monitors and restarts every other agent</p>
+  </div>
+  <div class="heal-steps">
+    <div class="heal-step">
+      <div class="step-num">1</div>
+      <h4>Health Check</h4>
+      <p>Every 5 min: curl each agent's health endpoint</p>
+    </div>
+    <div class="heal-step">
+      <div class="step-num">2</div>
+      <h4>Detect Failure</h4>
+      <p>No response or unhealthy → log to AGENT_BRIDGE.md</p>
+    </div>
+    <div class="heal-step">
+      <div class="step-num">3</div>
+      <h4>Auto-Restart</h4>
+      <p>launchd restarts ZeroClaw. pm2/launchd restarts OpenClaw</p>
+    </div>
+    <div class="heal-step">
+      <div class="step-num">4</div>
+      <h4>Notify David</h4>
+      <p>ZeroClaw @dreamnova_zc_bot sends Telegram alert</p>
+    </div>
+    <div class="heal-step">
+      <div class="step-num">5</div>
+      <h4>Self-Report</h4>
+      <p>Recovery written to SESSION_LIVE.md with timestamp</p>
+    </div>
+  </div>
+
+  <div class="script-block" style="margin-top:2rem;">
+    <button class="copy-btn" onclick="navigator.clipboard.writeText(document.getElementById('heal-script').textContent)">Copy</button>
+    <span class="script-label">bash</span>
+    <pre id="heal-script">#!/bin/bash
+# ~/.dreamnova/auto-heal.sh — runs every 5min via cron
+# crontab: */5 * * * * ~/.dreamnova/auto-heal.sh >> ~/.dreamnova/heal.log 2>&1
+
+BRIDGE=~/Desktop/AGENTS_COMMON/AGENT_BRIDGE.md
+BOT_TOKEN="8602042308:AAETcbkD6GGPPKAO5VSBE2wMybPVPnqltV8"
+DAVID_ID="7269582214"
+
+notify() { curl -s "https://api.telegram.org/bot$BOT_TOKEN/sendMessage" \
+  -d chat_id=$DAVID_ID -d text="🚨 AUTO-HEAL: $1" > /dev/null; }
+
+check_agent() {
+  local name=$1 url=$2 restart_cmd=$3
+  if ! curl -sf "$url" > /dev/null 2>&1; then
+    echo "[$(date)] $name DOWN — restarting"
+    eval "$restart_cmd"
+    sleep 3
+    if curl -sf "$url" > /dev/null 2>&1; then
+      echo "[$(date)] $name RESTORED"
+      notify "$name restored ✅"
+    else
+      echo "[$(date)] $name FAILED to restart"
+      notify "$name failed to restart ❌ — manual check needed"
+    fi
+    echo "### $(date '+%H:%M') — AUTO-HEAL $name" >> $BRIDGE
+  fi
+}
+
+check_agent "ZeroClaw"   "http://127.0.0.1:42617/health" "zeroclaw service restart"
+check_agent "OpenClaw"   "http://127.0.0.1:18789/health"  "openclaw gateway restart"
+check_agent "AgentZero"  "http://127.0.0.1:50001/health"  "docker restart agent-zero"</pre>
+  </div>
+  </div>
+</div>
+
+<!-- DAILY SCANNER -->
+<div class="section" id="scanner">
+  <div class="section-title">
+    <h2>Daily Tech Scanner</h2>
+    <p>Every morning at 06:00 — automatically scans for new tools to integrate</p>
+  </div>
+  <div class="scanner-card">
+    <h3>🔭 What gets scanned daily</h3>
+    <div class="scan-grid">
+      <div class="scan-item">
+        <h4>🤖 New AI Models</h4>
+        <p>OpenRouter free tier, Hugging Face new releases, Ollama library updates</p>
+      </div>
+      <div class="scan-item">
+        <h4>🛠 Agent Frameworks</h4>
+        <p>GitHub trending: agent, llm-agent, autonomous-ai tags — daily diff</p>
+      </div>
+      <div class="scan-item">
+        <h4>🦞 OpenClaw Updates</h4>
+        <p>npm outdated openclaw — auto-update if minor version</p>
+      </div>
+      <div class="scan-item">
+        <h4>🦀 ZeroClaw Updates</h4>
+        <p>brew outdated zeroclaw — notify if new version</p>
+      </div>
+      <div class="scan-item">
+        <h4>📊 Client Sites</h4>
+        <p>Lighthouse scores all 8 live sites — alert if drop &gt;5 points</p>
+      </div>
+      <div class="scan-item">
+        <h4>💰 Revenue Signals</h4>
+        <p>Stripe webhooks status, Vercel deploy health, domain expiries</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="script-block">
+    <button class="copy-btn" onclick="navigator.clipboard.writeText(document.getElementById('scan-script').textContent)">Copy</button>
+    <span class="script-label">bash</span>
+    <pre id="scan-script">#!/bin/bash
+# ~/.dreamnova/daily-scan.sh — 06:00 daily via cron
+# crontab: 0 6 * * * ~/.dreamnova/daily-scan.sh
+
+DATE=$(date '+%Y-%m-%d')
+REPORT=~/Desktop/DREAMNOVA_MISSION_CONTROL/reports/DESKTOP_SCAN_$DATE.md
+BOT_TOKEN="8602042308:AAETcbkD6GGPPKAO5VSBE2wMybPVPnqltV8"
+DAVID_ID="7269582214"
+
+notify() { curl -s "https://api.telegram.org/bot$BOT_TOKEN/sendMessage" \
+  -d chat_id=$DAVID_ID -d "text=$1" > /dev/null; }
+
+echo "# Daily Scan — $DATE" > $REPORT
+
+# 1. Check all agents
+for url in "http://127.0.0.1:42617/health" "http://127.0.0.1:18789/health" "http://127.0.0.1:50001/health"; do
+  status=$(curl -sf "$url" | python3 -c "import sys,json;print(json.load(sys.stdin).get('status','?'))" 2>/dev/null || echo "DOWN")
+  echo "- $url: $status" >> $REPORT
+done
+
+# 2. Check ZeroClaw updates
+brew outdated zeroclaw 2>/dev/null && notify "🦀 ZeroClaw update available! Run: brew upgrade zeroclaw"
+
+# 3. Check OpenClaw updates
+npm outdated -g openclaw 2>/dev/null | grep openclaw && notify "🦞 OpenClaw update available! Run: npm update -g openclaw"
+
+# 4. New OpenRouter free models with tool support
+curl -s "https://openrouter.ai/api/v1/models" | python3 -c "
+import sys,json,datetime
+models = json.load(sys.stdin).get('data',[])
+free_tools = [m['id'] for m in models if ':free' in m.get('id','')
+              and 'tools' in m.get('supported_parameters',[])]
+print('\n'.join(free_tools[:5]))
+" >> $REPORT
+
+notify "📊 Daily scan complete — $DATE. Check SESSION_LIVE.md for details."
+echo "Scan complete: $REPORT"</pre>
+  </div>
+</div>
+
+<!-- MEMORY SYSTEM -->
+<div class="section" id="memory" style="background:var(--surface);padding:4rem 2rem;max-width:100%;">
+  <div style="max-width:1100px;margin:0 auto;">
+  <div class="section-title">
+    <h2>Permanent Memory System</h2>
+    <p>Shared memory across all 4 agents — no context loss between sessions</p>
+  </div>
+  <table>
+    <thead>
+      <tr><th>Memory File</th><th>Written By</th><th>Read By</th><th>Purpose</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>SESSION_LIVE.md</code></td>
+        <td>Claude Code</td>
+        <td>All agents</td>
+        <td>Active session log, current tasks</td>
+      </tr>
+      <tr>
+        <td><code>AGENT_BRIDGE.md</code></td>
+        <td>All agents</td>
+        <td>All agents</td>
+        <td>Inter-agent communication hub</td>
+      </tr>
+      <tr>
+        <td><code>SESSIONS_INDEX.md</code></td>
+        <td>Claude Code</td>
+        <td>Claude Code (start)</td>
+        <td>Master memory — all past sessions</td>
+      </tr>
+      <tr>
+        <td><code>~/.claude/.../MEMORY.md</code></td>
+        <td>Claude Code</td>
+        <td>Claude Code</td>
+        <td>Auto-memory across conversations</td>
+      </tr>
+      <tr>
+        <td><code>~/clawd/memory/</code></td>
+        <td>OpenClaw</td>
+        <td>OpenClaw</td>
+        <td>39+ semantic memory files</td>
+      </tr>
+      <tr>
+        <td><code>~/.zeroclaw/workspace/</code></td>
+        <td>ZeroClaw</td>
+        <td>ZeroClaw</td>
+        <td>SQLite + SOUL.md + context files</td>
+      </tr>
+      <tr>
+        <td><code>agent-zero/knowledge/</code></td>
+        <td>Agent Zero</td>
+        <td>Agent Zero</td>
+        <td>Research results + DreamNova context</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="memory-timeline" style="margin-top:2rem;">
+    <div class="mem-event">
+      <div class="mem-time">00:00</div>
+      <div class="mem-text"><strong>Night</strong> — OpenClaw runs 8 agents. ZeroClaw processes Telegram. Agent Zero researches. All write to AGENT_BRIDGE.md</div>
+    </div>
+    <div class="mem-event">
+      <div class="mem-time">06:00</div>
+      <div class="mem-text"><strong>Morning</strong> — Daily scanner runs. Scans 8 sites + agents + new tools. Report saved + Telegram summary sent to David</div>
+    </div>
+    <div class="mem-event">
+      <div class="mem-time">Session Start</div>
+      <div class="mem-text"><strong>Claude Code</strong> reads SESSIONS_INDEX.md → SESSION_LIVE.md → NUCLEUS.md → MEMORY.md. Full context restored in &lt;30s</div>
+    </div>
+    <div class="mem-event">
+      <div class="mem-time">Every 10 actions</div>
+      <div class="mem-text"><strong>Claude Code</strong> appends to SESSION_LIVE.md. Format: ### HH:MM — [action] + bullets</div>
+    </div>
+    <div class="mem-event">
+      <div class="mem-time">Session End</div>
+      <div class="mem-text"><strong>Claude Code</strong> creates HANDOVER folder. Updates SESSIONS_INDEX.md. Syncs AGENT_BRIDGE.md. All agents briefed.</div>
+    </div>
+    <div class="mem-event">
+      <div class="mem-time">Daily</div>
+      <div class="mem-text"><strong>Auto-evolution</strong> — Scanner finds new tools → adds to TECH_RADAR.md → Claude Code integrates best ones next session</div>
+    </div>
+  </div>
+  </div>
+</div>
+
+<!-- QUICK COMMANDS -->
+<div class="section">
+  <div class="section-title">
+    <h2>Quick Command Reference</h2>
+    <p>Copy-paste commands for daily operations</p>
+  </div>
+  <div class="workflow-grid">
+    <div class="wf-card">
+      <h3>🦞 OpenClaw</h3>
+      <ul>
+        <li><code>openclaw gateway status</code></li>
+        <li><code>openclaw agent -m "task"</code></li>
+        <li><code>openclaw cron list</code></li>
+        <li><code>openclaw agents list</code></li>
+        <li><code>openclaw channels list</code></li>
+      </ul>
+    </div>
+    <div class="wf-card">
+      <h3>🦀 ZeroClaw</h3>
+      <ul>
+        <li><code>zeroclaw service status</code></li>
+        <li><code>zeroclaw agent -m "task"</code></li>
+        <li><code>zeroclaw doctor</code></li>
+        <li><code>zeroclaw channel list</code></li>
+        <li><code>zeroclaw cron list</code></li>
+      </ul>
+    </div>
+    <div class="wf-card">
+      <h3>🧠 Agent Zero</h3>
+      <ul>
+        <li><code>curl :50001/health</code></li>
+        <li>API: <code>POST /api_message</code></li>
+        <li>Header: <code>X-API-KEY: ND-YcAFpPSJejhz-</code></li>
+        <li>Dashboard: <code>localhost:50001</code></li>
+        <li><code>docker restart agent-zero</code></li>
+      </ul>
+    </div>
+    <div class="wf-card">
+      <h3>🚀 Deploy</h3>
+      <ul>
+        <li><code>vercel --prod --token=vcp_...</code></li>
+        <li><code>git push origin main</code></li>
+        <li><code>supabase db push</code></li>
+        <li><code>brew upgrade zeroclaw</code></li>
+        <li><code>npm update -g openclaw</code></li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<footer>
+  <p>⚡ DreamNova 4-Point Architecture — David Amor · Jerusalem · <span>Na Nach Nachma Nachman MeUman</span></p>
+  <p style="margin-top:0.5rem;font-size:0.7rem;">Auto-healing · Permanent memory · Daily evolution · claude-sonnet-4-6</p>
+</footer>
+
+</body>
+</html>
