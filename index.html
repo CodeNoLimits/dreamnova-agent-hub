@@ -246,14 +246,14 @@
         <text x="335" y="435" text-anchor="middle" fill="#a855f7" font-size="8" opacity="0.8">API</text>
       </g>
 
-      <!-- AGENT ZERO — LEFT -->
+      <!-- OLLAMA — LEFT -->
       <g>
-        <rect x="10" y="265" width="145" height="70" rx="12" fill="rgba(168,85,247,0.12)" stroke="#a855f7" stroke-width="1.5"/>
-        <text x="82" y="291" text-anchor="middle" fill="#a855f7" font-size="18">🧠</text>
-        <text x="82" y="311" text-anchor="middle" fill="#e2e2f0" font-size="11" font-weight="700">Agent Zero</text>
-        <text x="82" y="326" text-anchor="middle" fill="#8888aa" font-size="9">:50001 · Web Search</text>
-        <text x="183" y="295" text-anchor="middle" fill="#a855f7" font-size="8" opacity="0.8">curl</text>
-        <text x="183" y="308" text-anchor="middle" fill="#a855f7" font-size="8" opacity="0.8">JSON</text>
+        <rect x="10" y="265" width="145" height="70" rx="12" fill="rgba(249,115,22,0.12)" stroke="#f97316" stroke-width="1.5"/>
+        <text x="82" y="291" text-anchor="middle" fill="#f97316" font-size="18">🦙</text>
+        <text x="82" y="311" text-anchor="middle" fill="#e2e2f0" font-size="11" font-weight="700">Ollama</text>
+        <text x="82" y="326" text-anchor="middle" fill="#8888aa" font-size="9">:11434 · Local LLMs</text>
+        <text x="183" y="295" text-anchor="middle" fill="#f97316" font-size="8" opacity="0.8">API</text>
+        <text x="183" y="308" text-anchor="middle" fill="#f97316" font-size="8" opacity="0.8">local</text>
       </g>
     </svg>
   </div>
@@ -715,6 +715,99 @@ echo "Scan complete: $REPORT"</pre>
         <li><code>npm update -g openclaw</code></li>
       </ul>
     </div>
+  </div>
+</div>
+
+<!-- QUICKSTART -->
+<div class="section" id="quickstart">
+  <div class="section-title">
+    <h2>Démarrage en 60 secondes</h2>
+    <p>Tout est déjà installé — voici comment tout activer</p>
+  </div>
+  <div class="workflow-grid">
+    <div class="wf-card">
+      <h3>1️⃣ Vérifier les agents</h3>
+      <ul>
+        <li><code>zeroclaw service status</code></li>
+        <li><code>openclaw gateway status</code></li>
+        <li><code>curl localhost:50001/health</code></li>
+        <li><code>ollama list</code></li>
+      </ul>
+    </div>
+    <div class="wf-card">
+      <h3>2️⃣ Démarrer si nécessaire</h3>
+      <ul>
+        <li><code>zeroclaw service start</code></li>
+        <li><code>launchctl start ai.openclaw.node</code></li>
+        <li><code>docker start agent-zero</code></li>
+        <li><code>open -a Ollama</code></li>
+      </ul>
+    </div>
+    <div class="wf-card">
+      <h3>3️⃣ Chat ZeroClaw</h3>
+      <ul>
+        <li>Browser: <code>http://127.0.0.1:8181</code></li>
+        <li>Telegram: <code>@dreamnova_zc_bot</code></li>
+        <li>Terminal: <code>zeroclaw agent -m "..."</code></li>
+        <li>Proxy auto-start launchd ✅</li>
+      </ul>
+    </div>
+    <div class="wf-card">
+      <h3>4️⃣ Dispatcher</h3>
+      <ul>
+        <li><code>./dispatch.sh auto "task"</code></li>
+        <li><code>./dispatch.sh zc "quick query"</code></li>
+        <li><code>./dispatch.sh oc "notify client"</code></li>
+        <li><code>./dispatch.sh az "research topic"</code></li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="script-block" style="margin-top:2rem;">
+    <span class="script-label">bash — install crons</span>
+    <pre># Auto-healing toutes les 5 min + Daily scan 06h00
+(crontab -l 2>/dev/null; echo "*/5 * * * * ~/Desktop/dreamnova-agent-hub/auto-heal.sh") | crontab -
+(crontab -l 2>/dev/null; echo "0 6 * * * ~/Desktop/dreamnova-agent-hub/daily-scan.sh") | crontab -
+
+# Vérifier
+crontab -l | grep dreamnova</pre>
+  </div>
+</div>
+
+<!-- EVOLUTION PROTOCOL -->
+<div class="section" style="background:var(--surface);padding:4rem 2rem;max-width:100%;">
+  <div style="max-width:1100px;margin:0 auto;">
+  <div class="section-title">
+    <h2>Protocole d'Évolution Permanente</h2>
+    <p>Le système se met à jour tout seul — tu n'as rien à faire</p>
+  </div>
+  <div class="heal-steps">
+    <div class="heal-step">
+      <div class="step-num">📡</div>
+      <h4>Scan Quotidien</h4>
+      <p>06h00 — nouveaux modèles, mises à jour outils, GitHub trending</p>
+    </div>
+    <div class="heal-step">
+      <div class="step-num">📋</div>
+      <h4>TECH_RADAR.md</h4>
+      <p>Fichier auto-mis à jour avec les meilleures découvertes du jour</p>
+    </div>
+    <div class="heal-step">
+      <div class="step-num">🔔</div>
+      <h4>Telegram Alert</h4>
+      <p>@dreamnova_zc_bot envoie un résumé chaque matin à David</p>
+    </div>
+    <div class="heal-step">
+      <div class="step-num">🧠</div>
+      <h4>Claude Intègre</h4>
+      <p>Chaque session Claude lit TECH_RADAR.md et propose les meilleures nouvelles tech</p>
+    </div>
+    <div class="heal-step">
+      <div class="step-num">🔁</div>
+      <h4>Auto-Heal 5min</h4>
+      <p>Si un agent tombe → redémarré automatiquement → alerte Telegram</p>
+    </div>
+  </div>
   </div>
 </div>
 
